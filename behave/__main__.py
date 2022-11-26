@@ -17,6 +17,8 @@ from behave.exception import (ClassNotFoundError, ConfigError, ConstraintError,
                               ModuleNotFoundError)
 from behave.parser import ParserError
 from behave.runner import Runner
+from behave.runner_parallel import (FeatureParallelRunner,
+                                    ScenarioParallelRunner)
 from behave.runner_plugin import RunnerPlugin
 from behave.runner_util import print_undefined_step_snippets, reset_runtime
 from behave.textutil import compute_words_maxsize
@@ -114,12 +116,12 @@ def run_behave(config, runner_class=None):
 
     # -- HANDLE MULTIPROCESSING
     # Use default parallel runner if custom not provided
-    if config.jobs > 1 and (not runner_class or runner_class == DEFAULT_RUNNER_CLASS_NAME):
+    if config.jobs > 1 and (not runner_class or isinstance(runner_class, Runner)):
         if config.parallel_element == "feature":
-            runner_class = DEFAULT_FEATURE_PARALLEL_RUNNER
+            runner_class = FeatureParallelRunner
         else:
-            runner_class = DEFAULT_SCENARIO_PARALLEL_RUNNER
-        print("INFO: As number of processes/jobs > 1 - using Parallel Runner: %s" % runner_class)
+            runner_class = ScenarioParallelRunner
+        print("INFO: As number of processes/jobs > 1 - using Parallel Runner: %s" % runner_class.__name__)
 
     # -- MAIN PART:
     runner = None
@@ -127,7 +129,6 @@ def run_behave(config, runner_class=None):
     try:
         reset_runtime()
         runner = RunnerPlugin(runner_class).make_runner(config)
-        # print("USING RUNNER: {0}".format(make_scoped_class_name(runner)))
         failed = runner.run()
     except ParserError as e:
         print(u"ParserError: %s" % e)
@@ -295,9 +296,6 @@ def main(args=None):
     :param args:    Command-line args (or string) to use.
     :return: 0, if successful. Non-zero, in case of errors/failures.
     """
-    import multiprocessing
-    multiprocessing.set_start_method('fork')
-
     config = Configuration(args)
     return run_behave(config)
 

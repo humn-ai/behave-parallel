@@ -148,7 +148,6 @@ class SummaryReporter(Reporter):
         self.step_summary = {Status.undefined.name: 0}
         self.step_summary.update(summary_zero_data)
         self.start = monotonic()
-        self.duration = 0.0
         self.run_starttime = 0
         self.run_endtime = 0
         self.failed_scenarios = []
@@ -199,8 +198,8 @@ class SummaryReporter(Reporter):
 
         # -- DURATION:
         if with_duration:
-            run_duration = monotonic() - self.start
-            timings = (int(run_duration / 60.0), run_duration % 60)
+            duration = monotonic() - self.start
+            timings = (int(duration / 60.0), duration % 60)
             stream.write('Took %dm%02.3fs\n' % timings)
 
     # -- REPORTER-API:
@@ -233,7 +232,6 @@ class SummaryReporter(Reporter):
                 self.process_scenario(run_item)
 
     def process_feature(self, feature):
-        self.duration += feature.duration
         self.feature_summary[feature.status.name] += 1
         self.process_run_items_for(feature)
 

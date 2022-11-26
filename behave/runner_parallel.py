@@ -16,6 +16,7 @@ import multiprocessing
 
 import six
 
+from behave.api.runner import ITestRunner
 from behave.formatter._registry import make_formatters
 from behave.model import Feature, NoMatch, Scenario, ScenarioOutline
 from behave.runner import Context, Runner
@@ -26,6 +27,10 @@ if six.PY2:
     import Queue as queue
 else:
     import queue
+
+
+# set method to "fork" in order to prevent Pool issue on Mac
+multiprocessing.set_start_method('fork')
 
 
 class MasterParallelRunner(Runner):
@@ -389,3 +394,10 @@ class ProcessClientExecutor(Runner):
                   or cleanups_failed)
                   # XXX-MAYBE: or context.failed)
         return failed
+
+
+# -----------------------------------------------------------------------------
+# REGISTER RUNNER-CLASSES:
+# -----------------------------------------------------------------------------
+ITestRunner.register(FeatureParallelRunner)
+ITestRunner.register(ScenarioParallelRunner)

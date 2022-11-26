@@ -289,24 +289,6 @@ class BasicStatement(object):
         self.exc_traceback = None
         self.error_message = None
 
-    def send_status(self):
-        """Emit the volatile attributes of this model in a primitive dict"""
-        ret = {
-            "exception": self.exception,
-            "error_message": self.error_message,
-            "exc_traceback": self.exc_traceback,
-            "captured": self.captured.send_status(),
-        }
-        return ret
-
-    def recv_status(self, value):
-        """Set volatile attributes from a `send_status()` primitive value"""
-        for key in "exception", "error_message", "exc_traceback":
-            if key in value:
-                setattr(self, key, value[key])
-        if "captured" in value:
-            self.captured.recv_status(value["captured"])
-
     @property
     def filename(self):
         # return os.path.abspath(self.location.filename)
