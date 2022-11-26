@@ -10,19 +10,18 @@ import os.path
 import sys
 import warnings
 import weakref
+from enum import Enum
 
 import six
 
-from behave.api.runner import ITestRunner
 from behave._types import ExceptionUtil
+from behave.api.runner import ITestRunner
 from behave.capture import CaptureController
 from behave.exception import ConfigError
 from behave.formatter._registry import make_formatters
-from behave.runner_util import \
-    collect_feature_locations, parse_features, \
-    exec_file, load_step_modules, PathManager
+from behave.runner_util import (PathManager, collect_feature_locations,
+                                exec_file, load_step_modules, parse_features)
 from behave.step_registry import registry as the_step_registry
-from enum import Enum
 
 if six.PY2:
     # -- USE PYTHON3 BACKPORT: With unicode traceback support.
@@ -418,7 +417,7 @@ class Context(object):
                     if step.error_message:
                         message += "\nSubstep info: %s\n" % step.error_message
                         message += u"Traceback (of failed substep):\n"
-                        message += u"".join(traceback.format_tb(step.exc_traceback))
+                        message += u"".join(step.exc_traceback)
                     # message += u"\nTraceback (of context.execute_steps()):"
                     assert False, message
 

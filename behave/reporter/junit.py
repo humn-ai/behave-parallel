@@ -70,20 +70,25 @@ Best sources are:
 # pylint: enable=line-too-long
 
 from __future__ import absolute_import
-import os.path
+
 import codecs
+import os.path
 import re
 import sys
-from xml.etree import ElementTree
 from datetime import datetime
-from behave.reporter.base import Reporter
+from xml.etree import ElementTree
+
+import six
+
+from behave.formatter import ansi_escapes
 from behave.model import Rule, Scenario, ScenarioOutline, Step
 from behave.model_core import Status
-from behave.formatter import ansi_escapes
 from behave.model_describe import ModelDescriptor
-from behave.textutil import indent, make_indentation, text as _text
+from behave.reporter.base import Reporter
+from behave.textutil import indent, make_indentation
+from behave.textutil import text as _text
 from behave.userdata import UserDataNamespace
-import six
+
 if six.PY2:
     # -- USE: Python3 backport for better unicode compatibility.
     import traceback2 as traceback
@@ -348,7 +353,10 @@ class JUnitReporter(Reporter):
             if step.text:
                 text += ModelDescriptor.describe_docstring(step.text, prefix)
             elif step.table:
-                text += ModelDescriptor.describe_table(step.table, prefix)
+                try:
+                    text += ModelDescriptor.describe_table(step.table, prefix)
+                except Exception:
+                    pass
         return text
 
     @classmethod
@@ -447,8 +455,7 @@ class JUnitReporter(Reporter):
                     failure_type = scenario.exception.__class__.__name__
                 failure.set(u'type', failure_type)
                 failure.set(u'message', scenario.error_message.strip() or "")
-                traceback_lines = traceback.format_tb(scenario.exc_traceback)
-                traceback_lines.insert(0, u"Traceback:\n")
+                traceback_lines = [u"Traceback:\n"] + scenario.exc_traceback
                 text = _text(u"".join(traceback_lines))
             failure.append(CDATA(text))
             case.append(failure)
@@ -482,10 +489,16 @@ class JUnitReporter(Reporter):
         case.append(stdout)
 
         # Create stderr section for each test case
+        stderr = ElementTree.Element(u"system-err")
+        text = u''
         if scenario.captured.stderr:
-            stderr = ElementTree.Element(u"system-err")
-            output = _text(scenario.captured.stderr)
-            text = u"\nCaptured stderr:\n%s\n" % output
+            text += u"\nCaptured stderr:\n" \
+                    + _text(scenario.captured.stderr) + u'\n'
+
+        if scenario.captured.log_output:
+            text += u"\nCaptured logs:\n" \
+                    + _text(scenario.captured.log_output) + u'\n'
+        if text:
             stderr.append(CDATA(text))
             case.append(stderr)
 

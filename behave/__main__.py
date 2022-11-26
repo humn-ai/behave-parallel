@@ -1,19 +1,28 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, print_function
+
 import codecs
 import sys
+
 import six
-from behave.version import VERSION as BEHAVE_VERSION
-from behave.configuration import Configuration
-from behave.exception import ConstraintError, ConfigError, \
-    FileNotFoundError, InvalidFileLocationError, InvalidFilenameError, \
-    ModuleNotFoundError, ClassNotFoundError, InvalidClassError
+
+from behave.configuration import (DEFAULT_FEATURE_PARALLEL_RUNNER,
+                                  DEFAULT_RUNNER_CLASS_NAME,
+                                  DEFAULT_SCENARIO_PARALLEL_RUNNER,
+                                  Configuration)
+from behave.exception import (ClassNotFoundError, ConfigError, ConstraintError,
+                              FileNotFoundError, InvalidClassError,
+                              InvalidFileLocationError, InvalidFilenameError,
+                              ModuleNotFoundError)
 from behave.parser import ParserError
 from behave.runner import Runner
-from behave.runner_util import print_undefined_step_snippets, reset_runtime
-from behave.textutil import compute_words_maxsize, text as _text
 from behave.runner_plugin import RunnerPlugin
+from behave.runner_util import print_undefined_step_snippets, reset_runtime
+from behave.textutil import compute_words_maxsize
+from behave.textutil import text as _text
+from behave.version import VERSION as BEHAVE_VERSION
+
 # PREPARED: from behave.importer import make_scoped_class_name
 
 
@@ -72,7 +81,7 @@ def run_behave(config, runner_class=None):
         print(TAG_HELP)
         return 0
 
-    if  config.lang == "help" or config.lang_list:
+    if config.lang == "help" or config.lang_list:
         print_language_list()
         return 0
 
@@ -102,6 +111,15 @@ def run_behave(config, runner_class=None):
     if config.runner == "help":
         print_runners(config.runner_aliases)
         return 0
+
+    # -- HANDLE MULTIPROCESSING
+    # Use default parallel runner if custom not provided
+    if config.jobs > 1 and (not runner_class or runner_class == DEFAULT_RUNNER_CLASS_NAME):
+        if config.parallel_element == "feature":
+            runner_class = DEFAULT_FEATURE_PARALLEL_RUNNER
+        else:
+            runner_class = DEFAULT_SCENARIO_PARALLEL_RUNNER
+        print("INFO: As number of processes/jobs > 1 - using Parallel Runner: %s" % runner_class)
 
     # -- MAIN PART:
     runner = None
@@ -177,6 +195,7 @@ def print_language_list(file=None):
 
 def print_language_help(language, file=None):
     from behave.i18n import languages
+
     # if stream is None:
     #     stream = sys.stdout
     #     if six.PY2:
@@ -206,8 +225,9 @@ def print_formatters(file=None):
 
     :param file:  Optional, output file to use (default: sys.stdout).
     """
-    from behave.formatter._registry  import format_items
     from operator import itemgetter
+
+    from behave.formatter._registry import format_items
 
     print_ = lambda text: print(text, file=file)
 
@@ -275,6 +295,9 @@ def main(args=None):
     :param args:    Command-line args (or string) to use.
     :return: 0, if successful. Non-zero, in case of errors/failures.
     """
+    import multiprocessing
+    multiprocessing.set_start_method('fork')
+
     config = Configuration(args)
     return run_behave(config)
 
