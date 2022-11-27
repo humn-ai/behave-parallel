@@ -2,8 +2,8 @@
 
 from __future__ import absolute_import, print_function
 
-import argparse
 import logging
+import multiprocessing
 import os
 import re
 import shlex
@@ -13,6 +13,7 @@ import six
 from six.moves import configparser
 
 from behave._types import Unknown
+from behave.arg_parser import BehaveArgParser
 from behave.formatter import _registry as _format_registry
 from behave.formatter.base import StreamOpener
 from behave.model import ScenarioOutline
@@ -80,6 +81,18 @@ def positive_number(text):
     return value
 
 
+def validate_jobs_number(text):
+    """Verify that provided number is valid and does not exceed cpu_number"""
+    value = int(text)
+    max_cpu_count = multiprocessing.cpu_count()
+
+    if value <= 0:
+        raise ValueError("Number of jobs should be a positive number: %s" % text)
+    if value > max_cpu_count:
+        raise ValueError("Number of jobs (%s) can't be greated than cpu count: %d" % (text, max_cpu_count))
+    return value
+
+
 # -----------------------------------------------------------------------------
 # CONFIGURATION SCHEMA:
 # -----------------------------------------------------------------------------
@@ -132,7 +145,7 @@ options = [
           help="""Directory in which to store JUnit reports.""")),
 
     (("-j", "--jobs", "--parallel"),
-     dict(metavar="NUMBER", dest="jobs", default=1, type=positive_number,
+     dict(metavar="NUMBER", dest="jobs", default=1, type=validate_jobs_number,
           help="""Number of concurrent jobs to use (default: %(default)s).
                   Only supported by test runners that support parallel execution.""")),
 
@@ -504,7 +517,7 @@ def setup_parser():
     behave features/one.feature:10
     behave @features.txt
     """
-    parser = argparse.ArgumentParser(usage=usage, description=description)
+    parser = BehaveArgParser(usage=usage, description=description)
     for fixed, keywords in options:
         if not fixed:
             continue    # -- CONFIGFILE only.

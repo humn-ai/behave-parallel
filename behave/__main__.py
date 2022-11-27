@@ -7,16 +7,12 @@ import sys
 
 import six
 
-from behave.configuration import (DEFAULT_FEATURE_PARALLEL_RUNNER,
-                                  DEFAULT_RUNNER_CLASS_NAME,
-                                  DEFAULT_SCENARIO_PARALLEL_RUNNER,
-                                  Configuration)
+from behave.configuration import Configuration
 from behave.exception import (ClassNotFoundError, ConfigError, ConstraintError,
                               FileNotFoundError, InvalidClassError,
                               InvalidFileLocationError, InvalidFilenameError,
                               ModuleNotFoundError)
 from behave.parser import ParserError
-from behave.runner import Runner
 from behave.runner_parallel import (FeatureParallelRunner,
                                     ScenarioParallelRunner)
 from behave.runner_plugin import RunnerPlugin
