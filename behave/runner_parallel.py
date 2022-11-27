@@ -10,6 +10,7 @@ Additional improvements:
  - fixed FeatureRunner to correctly call super class
  - fixed Feature/Scenario calculation before kicking off parallel processes
  - fixed test duration calculation in Summary and Junit
+ - fixed issue when undefined_steps were not printed
 """
 
 import multiprocessing
@@ -42,8 +43,9 @@ class MasterParallelRunner(Runner):
     def __init__(self, config):
         super(MasterParallelRunner, self).__init__(config)
         self.jobs_map = {}
-        self.jobsq = multiprocessing.JoinableQueue()
-        self.resultsq = multiprocessing.Queue()
+        self.jobs_q = multiprocessing.JoinableQueue()
+        self.results_q = multiprocessing.Queue()
+        self.undefined_steps_q = multiprocessing.Queue()
         self._reported_features = set()
         self.results_fail = False
 
@@ -67,8 +69,8 @@ class MasterParallelRunner(Runner):
         n_jobs = len(self.jobs_map)
         n_processes = self.config.jobs
 
-        print("\n\nINFO: {0} scenario(s) and {1} feature(s) queued for"
-                " consideration by {2} workers.\n\n"
+        print("\nINFO: {0} scenario(s) and {1} feature(s) queued for"
+                " consideration by {2} workers.\n"
                .format(scenario_count, feature_count, n_processes))
         processes = []
 
@@ -83,9 +85,9 @@ class MasterParallelRunner(Runner):
 
         # -- STEP: Run each test as a separate Process
         for i in range(n_processes):
-            client = ProcessClientExecutor(self, i)
+            client = ProcessClientWorker(self, i)
             p = multiprocessing.Process(
-                target=client.run_executor,
+                target=client.run_worker,
                 args=[self.context]
                 )
             processes.append(p)
@@ -94,7 +96,7 @@ class MasterParallelRunner(Runner):
 
         print("INFO: started {0} workers for {1} jobs.".format(n_processes, n_jobs))
 
-        while (not self.jobsq.empty()):
+        while (not self.jobs_q.empty()):
             # 1: consume results while tests are running
             self.consume_results()
             if not any([p.is_alive() for p in processes]):
@@ -102,7 +104,7 @@ class MasterParallelRunner(Runner):
 
         # wait for all jobs to be processed
         if any([p.is_alive() for p in processes]):
-            self.jobsq.join()
+            self.jobs_q.join()
             print("INFO: all jobs have been processed")
 
             while self.consume_results(timeout=0.1):
@@ -123,6 +125,12 @@ class MasterParallelRunner(Runner):
         for f in self.features:
             # make sure all features (including ones that have not returned) are printed
             self._output_feature(f)
+        
+        # return all undefined steps back to master
+        while not self.undefined_steps_q.empty():
+            step = self.undefined_steps_q.get()
+            self.undefined_steps.append(step)
+        self.undefined_steps_q.close()
 
         # notify formatters and reporters that test run has finished
         for formatter in self.formatters:
@@ -138,7 +146,7 @@ class MasterParallelRunner(Runner):
     def put_item_into_queue(self, item: Scenario | Feature):
         item_id = id(item)
         self.jobs_map[item_id] = item
-        self.jobsq.put(item_id)
+        self.jobs_q.put(item_id)
 
     def consume_results(self, timeout=1):
         """Get item result in real-time using multiprocessing pipe. 
@@ -147,7 +155,7 @@ class MasterParallelRunner(Runner):
         """
 
         try:
-            job_id, result = self.resultsq.get(timeout=timeout)
+            job_id, result = self.results_q.get(timeout=timeout)
         except queue.Empty:
             return False
 
@@ -253,16 +261,17 @@ class ScenarioParallelRunner(MasterParallelRunner):
         return n_features, n_scenarios
 
 
-class ProcessClientExecutor(Runner):
-    """Multiprocessing Client Executor: picks "job" from parent queue and runs it
+class ProcessClientWorker(Runner):
+    """Multiprocessing Client Worker: picks "job" from parent queue and runs it
         Each client is tagged with a `num` to appear in outputs etc.
     """
     def __init__(self, parent, num):
-        super(ProcessClientExecutor, self).__init__(parent.config)
+        super(ProcessClientWorker, self).__init__(parent.config)
         self.num = num
         self.jobs_map = parent.jobs_map
-        self.jobsq = parent.jobsq
-        self.resultsq = parent.resultsq
+        self.jobs_q = parent.jobs_q
+        self.results_q = parent.results_q
+        self.undefined_steps_q = parent.undefined_steps_q
 
     def iter_queue(self):
         """Iterator fetching features from the queue
@@ -272,14 +281,14 @@ class ProcessClientExecutor(Runner):
         """
         while True:
             try:
-                job_id = self.jobsq.get(timeout=1.0)
+                job_id = self.jobs_q.get(timeout=1.0)
             except queue.Empty:
                 break
 
             job = self.jobs_map.get(job_id, None)
             if job is None:
                 print("ERROR: missing job id=%s from map" % job_id)
-                self.jobsq.task_done()
+                self.jobs_q.task_done()
                 continue
 
             if isinstance(job, Feature):
@@ -299,17 +308,17 @@ class ProcessClientExecutor(Runner):
                 raise TypeError("Don't know how to process: %s" % type(job))
 
             try:
-                self.resultsq.put((job_id, job.send_status()))
+                self.results_q.put((job_id, job.send_status()))
             except Exception as e:
                 print("ERROR: Cannot send result for {1}: {0}".format(e, job.name))
 
-            self.jobsq.task_done()
+            self.jobs_q.task_done()
 
-    def update_executors_context(self, master_context: Context):
+    def update_worker_context(self, master_context: Context):
         """Loads values from master context into the local context
         
         It's needed to have access to context objects, which were initialized in before_all()
-        In this case, each ProcessClientExecutor.context will have a reference to the same object
+        In this case, each ProcessClientWorker.context will have a reference to the same object
         created in Master Process.
         """
         for k, v in master_context._root.items():
@@ -320,14 +329,14 @@ class ProcessClientExecutor(Runner):
                 except BaseException as e:
                     print(f"ERROR: Failed to updated context with {k} --> {v}: ", e)
 
-    def run_executor(self, master_context: Context):
+    def run_worker(self, master_context: Context):
         with self.path_manager:
             self.setup_paths()
             return self.run_with_paths(master_context)
 
     def run_with_paths(self, master_context: Context):
         self.context = Context(self)
-        self.update_executors_context(master_context)
+        self.update_worker_context(master_context)
 
         self.load_hooks()
         self.load_step_definitions()
@@ -335,8 +344,8 @@ class ProcessClientExecutor(Runner):
 
         failed = self.run_model(features=self.iter_queue())
         if failed:
-            self.resultsq.put((None, 'set_fail'))
-        self.resultsq.close()
+            self.results_q.put((None, 'set_fail'))
+        self.results_q.close()
 
     def run_model(self, features=None):
         # pylint: disable=too-many-branches
@@ -388,6 +397,10 @@ class ProcessClientExecutor(Runner):
 
         if self.aborted:
             print("\nABORTED: By user.")
+        
+        # add undefined steps to queue
+        if self.undefined_steps:
+            [self.undefined_steps_q.put(step) for step in self.undefined_steps]
 
         failed = ((failed_count > 0) or self.aborted or (self.hook_failures > 0)
                   or (len(self.undefined_steps) > undefined_steps_initial_size)

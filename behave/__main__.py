@@ -106,7 +106,7 @@ def run_behave(config, runner_class=None):
         return 0
 
     if len(config.outputs) > len(config.format):
-        print("CONFIG-ERROR: More outfiles (%d) than formatters (%d)." % \
+        print("CONFIG-ERROR: More outfiles (%d) than formatters (%d)." %
               (len(config.outputs), len(config.format)))
         return 1
 
@@ -116,12 +116,13 @@ def run_behave(config, runner_class=None):
 
     # -- HANDLE MULTIPROCESSING
     # Use default parallel runner if custom not provided
-    if config.jobs > 1 and (not runner_class or isinstance(runner_class, Runner)):
+    if config.jobs > 1 and not runner_class:
         if config.parallel_element == "feature":
             runner_class = FeatureParallelRunner
         else:
             runner_class = ScenarioParallelRunner
-        print("INFO: As number of processes/jobs > 1 - using Parallel Runner: %s" % runner_class.__name__)
+        print("INFO: Number of jobs > 1 - using Parallel Runner: %s" % 
+            runner_class.__name__)
 
     # -- MAIN PART:
     runner = None
