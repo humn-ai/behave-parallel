@@ -1,26 +1,20 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, print_function
-
 import codecs
 import sys
-
 import six
-
-from behave.configuration import Configuration
-from behave.exception import (ClassNotFoundError, ConfigError, ConstraintError,
-                              FileNotFoundError, InvalidClassError,
-                              InvalidFileLocationError, InvalidFilenameError,
-                              ModuleNotFoundError)
-from behave.parser import ParserError
-from behave.runner_parallel import (FeatureParallelRunner,
-                                    ScenarioParallelRunner)
-from behave.runner_plugin import RunnerPlugin
-from behave.runner_util import print_undefined_step_snippets, reset_runtime
-from behave.textutil import compute_words_maxsize
-from behave.textutil import text as _text
 from behave.version import VERSION as BEHAVE_VERSION
-
+from behave.configuration import Configuration
+from behave.exception import ConstraintError, ConfigError, \
+    FileNotFoundError, InvalidFileLocationError, InvalidFilenameError, \
+    ModuleNotFoundError, ClassNotFoundError, InvalidClassError
+from behave.parser import ParserError
+from behave.runner import Runner
+from behave.runner_parallel import FeatureParallelRunner, ScenarioParallelRunner
+from behave.runner_util import print_undefined_step_snippets, reset_runtime
+from behave.textutil import compute_words_maxsize, text as _text
+from behave.runner_plugin import RunnerPlugin
 # PREPARED: from behave.importer import make_scoped_class_name
 
 
@@ -102,7 +96,7 @@ def run_behave(config, runner_class=None):
         return 0
 
     if len(config.outputs) > len(config.format):
-        print("CONFIG-ERROR: More outfiles (%d) than formatters (%d)." %
+        print("CONFIG-ERROR: More outfiles (%d) than formatters (%d)." % \
               (len(config.outputs), len(config.format)))
         return 1
 
@@ -126,6 +120,7 @@ def run_behave(config, runner_class=None):
     try:
         reset_runtime()
         runner = RunnerPlugin(runner_class).make_runner(config)
+        # print("USING RUNNER: {0}".format(make_scoped_class_name(runner)))
         failed = runner.run()
     except ParserError as e:
         print(u"ParserError: %s" % e)
@@ -193,7 +188,6 @@ def print_language_list(file=None):
 
 def print_language_help(language, file=None):
     from behave.i18n import languages
-
     # if stream is None:
     #     stream = sys.stdout
     #     if six.PY2:
@@ -223,9 +217,8 @@ def print_formatters(file=None):
 
     :param file:  Optional, output file to use (default: sys.stdout).
     """
-    from operator import itemgetter
-
     from behave.formatter._registry import format_items
+    from operator import itemgetter
 
     print_ = lambda text: print(text, file=file)
 

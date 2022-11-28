@@ -6,12 +6,12 @@ for the model elements in behave.
 
 import os.path
 import sys
-from enum import Enum
 
 import six
 
 from behave.capture import Captured
 from behave.textutil import text as _text
+from enum import Enum
 
 if six.PY2:
     # -- USE: Python3 backport for better unicode compatibility.

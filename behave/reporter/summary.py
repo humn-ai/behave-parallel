@@ -8,10 +8,10 @@ from __future__ import absolute_import, division, print_function
 import sys
 from time import time as time_now
 
-from behave.formatter.base import StreamOpener
 from behave.model import Rule, ScenarioOutline  # MAYBE: Scenario
 from behave.model_core import Status
 from behave.reporter.base import Reporter
+from behave.formatter.base import StreamOpener
 
 try:
     # requires py>=3.3 or 3.5 for all platforms

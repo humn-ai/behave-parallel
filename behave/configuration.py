@@ -1,28 +1,27 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, print_function
-
+import inspect
 import logging
 import multiprocessing
 import os
 import re
-import shlex
 import sys
-
+import shlex
 import six
 from six.moves import configparser
 
-from behave._types import Unknown
-from behave.arg_parser import ArgumentTypeError, BehaveArgParser
-from behave.formatter import _registry as _format_registry
-from behave.formatter.base import StreamOpener
+from behave.arg_parser import BehaveArgParser, ArgumentTypeError
 from behave.model import ScenarioOutline
 from behave.model_core import FileLocation
 from behave.reporter.junit import JUnitReporter
 from behave.reporter.summary import SummaryReporter
 from behave.tag_expression import make_tag_expression
-from behave.textutil import select_best_encoding, to_texts
+from behave.formatter.base import StreamOpener
+from behave.formatter import _registry as _format_registry
 from behave.userdata import UserData, parse_user_define
+from behave._types import Unknown
+from behave.textutil import select_best_encoding, to_texts
 
 # -- PYTHON 2/3 COMPATIBILITY:
 # SINCE Python 3.2: ConfigParser = SafeConfigParser

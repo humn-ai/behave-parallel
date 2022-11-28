@@ -2,7 +2,6 @@
 # pylint: disable=too-many-lines
 """
 This module provides the model element class that represent a behave model:
-
 * :class:`Feature`
 * :class:`Scenario`
 * :class:`ScenarioOutline`
@@ -10,22 +9,18 @@ This module provides the model element class that represent a behave model:
 * ...
 """
 
-from __future__ import absolute_import, print_function, with_statement
-
+from __future__ import absolute_import, with_statement, print_function
 import copy
 import difflib
-import itertools
 import logging
+import itertools
 import time
-
 import six
-from six.moves import zip  # pylint: disable=redefined-builtin
-
+from six.moves import zip       # pylint: disable=redefined-builtin
+from behave.model_core import \
+        Status, BasicStatement, TagAndStatusStatement, TagStatement, Replayable
 from behave.matchers import NoMatch
-from behave.model_core import (BasicStatement, Replayable, Status,
-                               TagAndStatusStatement, TagStatement)
 from behave.textutil import text as _text
-
 if six.PY2:
     # -- USE PYTHON3 BACKPORT: With unicode traceback support.
     import traceback2 as traceback

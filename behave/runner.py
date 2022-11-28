@@ -10,18 +10,19 @@ import os.path
 import sys
 import warnings
 import weakref
-from enum import Enum
 
 import six
 
-from behave._types import ExceptionUtil
 from behave.api.runner import ITestRunner
+from behave._types import ExceptionUtil
 from behave.capture import CaptureController
 from behave.exception import ConfigError
 from behave.formatter._registry import make_formatters
-from behave.runner_util import (PathManager, collect_feature_locations,
-                                exec_file, load_step_modules, parse_features)
+from behave.runner_util import \
+    collect_feature_locations, parse_features, \
+    exec_file, load_step_modules, PathManager
 from behave.step_registry import registry as the_step_registry
+from enum import Enum
 
 if six.PY2:
     # -- USE PYTHON3 BACKPORT: With unicode traceback support.

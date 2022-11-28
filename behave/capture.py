@@ -4,12 +4,9 @@ Capture output (stdout, stderr), logs, etc.
 """
 
 from __future__ import absolute_import
-
-import sys
 from contextlib import contextmanager
-
-from six import PY2, StringIO
-
+import sys
+from six import StringIO, PY2
 from behave.log_capture import LoggingCapture
 from behave.textutil import text as _text
 
