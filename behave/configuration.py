@@ -13,7 +13,7 @@ import six
 from six.moves import configparser
 
 from behave._types import Unknown
-from behave.arg_parser import BehaveArgParser
+from behave.arg_parser import ArgumentTypeError, BehaveArgParser
 from behave.formatter import _registry as _format_registry
 from behave.formatter.base import StreamOpener
 from behave.model import ScenarioOutline
@@ -65,7 +65,7 @@ class LogLevel(object):
         if level is Unknown:
             message = "%s is unknown, use: %s" % \
                       (levelname, ", ".join(cls.names[1:]))
-            raise argparse.ArgumentTypeError(message)
+            raise ArgumentTypeError(message)
         return level
 
     @staticmethod
@@ -76,20 +76,22 @@ class LogLevel(object):
 def positive_number(text):
     """Converts a string into a positive integer number."""
     value = int(text)
-    if value < 0:
-        raise ValueError("POSITIVE NUMBER, but was: %s" % text)
+    if value <= 0:
+        raise ValueError("Provided value should be a positive number, but was: %s" % text)
     return value
 
 
 def validate_jobs_number(text):
     """Verify that provided number is valid and does not exceed cpu_number"""
-    value = int(text)
     max_cpu_count = multiprocessing.cpu_count()
 
-    if value <= 0:
-        raise ValueError("Number of jobs should be a positive number: %s" % text)
-    if value > max_cpu_count:
-        raise ValueError("Number of jobs (%s) can't be greated than cpu count: %d" % (text, max_cpu_count))
+    # set number of jobs to number of Cores if "auto" was provided
+    if text == "auto":
+        value = max_cpu_count
+    else:
+        # check that provided number is positive
+        value = positive_number(text)
+
     return value
 
 
@@ -144,14 +146,14 @@ options = [
           default="reports",
           help="""Directory in which to store JUnit reports.""")),
 
-    (("-j", "--jobs", "--parallel"),
+    (("-j", "--jobs", "--parallel-processes", "--workers"),
      dict(metavar="NUMBER", dest="jobs", default=1, type=validate_jobs_number,
           help="""Number of concurrent jobs to use (default: %(default)s).
                   Only supported by test runners that support parallel execution.""")),
 
     (('--parallel-element',),
      dict(metavar="STRING", dest='parallel_element', default="scenario",
-          help="""If you used the --processes option, then this will control how the tests get parallelized. 
+          help="""If you used the --jobs option, then this will control how the tests get parallelized. 
           Valid values are 'feature' or 'scenario'. Anything else will error. See readme for more 
           info on how this works.""")),
 
