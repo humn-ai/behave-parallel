@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, print_function
-import argparse
 import inspect
 import logging
+import multiprocessing
 import os
 import re
 import sys
@@ -11,6 +11,7 @@ import shlex
 import six
 from six.moves import configparser
 
+from behave.arg_parser import BehaveArgParser, ArgumentTypeError
 from behave.model import ScenarioOutline
 from behave.model_core import FileLocation
 from behave.reporter.junit import JUnitReporter
@@ -33,6 +34,8 @@ if six.PY2:
 # CONSTANTS:
 # -----------------------------------------------------------------------------
 DEFAULT_RUNNER_CLASS_NAME = "behave.runner:Runner"
+DEFAULT_SCENARIO_PARALLEL_RUNNER = "behave.runner_parallel:ScenarioParallelRunner"
+DEFAULT_FEATURE_PARALLEL_RUNNER = "behave.runner_parallel:FeatureParallelRunner"
 
 
 # -----------------------------------------------------------------------------
@@ -61,7 +64,7 @@ class LogLevel(object):
         if level is Unknown:
             message = "%s is unknown, use: %s" % \
                       (levelname, ", ".join(cls.names[1:]))
-            raise argparse.ArgumentTypeError(message)
+            raise ArgumentTypeError(message)
         return level
 
     @staticmethod
@@ -72,8 +75,22 @@ class LogLevel(object):
 def positive_number(text):
     """Converts a string into a positive integer number."""
     value = int(text)
-    if value < 0:
-        raise ValueError("POSITIVE NUMBER, but was: %s" % text)
+    if value <= 0:
+        raise ValueError("Provided value should be a positive number, but was: %s" % text)
+    return value
+
+
+def validate_jobs_number(text):
+    """Verify that provided number is valid and does not exceed cpu_number"""
+    max_cpu_count = multiprocessing.cpu_count()
+
+    # set number of jobs to number of Cores if "auto" was provided
+    if text == "auto":
+        value = max_cpu_count
+    else:
+        # check that provided number is positive
+        value = positive_number(text)
+
     return value
 
 
@@ -128,10 +145,16 @@ options = [
           default="reports",
           help="""Directory in which to store JUnit reports.""")),
 
-    (("-j", "--jobs", "--parallel"),
-     dict(metavar="NUMBER", dest="jobs", default=1, type=positive_number,
+    (("-j", "--jobs", "--parallel-processes", "--workers"),
+     dict(metavar="NUMBER", dest="jobs", default=1, type=validate_jobs_number,
           help="""Number of concurrent jobs to use (default: %(default)s).
                   Only supported by test runners that support parallel execution.""")),
+
+    (('--parallel-element',),
+     dict(metavar="STRING", dest='parallel_element', default="scenario",
+          help="""If you used the --jobs option, then this will control how the tests get parallelized. 
+          Valid values are 'feature' or 'scenario'. Anything else will error. See readme for more 
+          info on how this works.""")),
 
     ((),  # -- CONFIGFILE only
      dict(dest="default_format", default="pretty",
@@ -495,7 +518,7 @@ def setup_parser():
     behave features/one.feature:10
     behave @features.txt
     """
-    parser = argparse.ArgumentParser(usage=usage, description=description)
+    parser = BehaveArgParser(usage=usage, description=description)
     for fixed, keywords in options:
         if not fixed:
             continue    # -- CONFIGFILE only.
@@ -514,6 +537,7 @@ class Configuration(object):
     defaults = dict(
         color='never' if sys.platform == "win32" else os.getenv('BEHAVE_COLOR', 'auto'),
         jobs=1,
+        parallel_element="scenario",
         show_snippets=True,
         show_skipped=True,
         dry_run=False,
@@ -610,7 +634,11 @@ class Configuration(object):
         self.userdata_defines = None
         self.more_formatters = None
         self.more_runners = None
-        self.runner_aliases = dict(default=DEFAULT_RUNNER_CLASS_NAME)
+        self.runner_aliases = dict(
+            default=DEFAULT_RUNNER_CLASS_NAME, 
+            parallel_scenario=DEFAULT_SCENARIO_PARALLEL_RUNNER, 
+            parallel_feature=DEFAULT_FEATURE_PARALLEL_RUNNER
+        )
         if load_config:
             load_configuration(self.defaults, verbose=verbose)
         parser = setup_parser()

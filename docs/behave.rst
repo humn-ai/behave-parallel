@@ -55,10 +55,16 @@ You may see the same information presented below at any time using ``behave
 
     Directory in which to store JUnit reports.
 
-.. option:: -j, --jobs, --parallel
+.. option:: -j, --jobs, --parallel-processes, --workers
 
-    Number of concurrent jobs to use (default: 1). Only supported by test
-    runners that support parallel execution.
+    Number of concurrent jobs to use (default: 1). 
+    Only supported by test runners that support parallel execution.
+
+.. option:: --parallel-element
+
+    If you used the --jobs option, then this will control how the tests get 
+    parallelized: by "scenario" (default) or by "feature".
+    Only supported by test runners that support parallel execution.
 
 .. option:: -f, --format
 
@@ -396,10 +402,19 @@ Configuration Parameters
 .. index::
     single: configuration param; jobs
 
-.. describe:: jobs : positive_number
+.. describe:: jobs : validate_jobs_number
 
-    Number of concurrent jobs to use (default: 1). Only supported by test
-    runners that support parallel execution.
+    Number of concurrent jobs to use (default: 1). Should be a positive number or "auto".
+    If "auto" was provided - will set number of jobs according to number of CPU cores.
+    Only supported by test runners that support parallel execution.
+
+.. index::
+    single: configuration param; parallel_element
+
+.. describe:: parallel_element : text
+
+    Control how the tests get parallelized: by "scenario" (default) or by "feature"
+    Only supported by test runners that support parallel execution.
 
 .. index::
     single: configuration param; default_format

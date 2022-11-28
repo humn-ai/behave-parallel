@@ -11,6 +11,7 @@ from behave.exception import ConstraintError, ConfigError, \
     ModuleNotFoundError, ClassNotFoundError, InvalidClassError
 from behave.parser import ParserError
 from behave.runner import Runner
+from behave.runner_parallel import FeatureParallelRunner, ScenarioParallelRunner
 from behave.runner_util import print_undefined_step_snippets, reset_runtime
 from behave.textutil import compute_words_maxsize, text as _text
 from behave.runner_plugin import RunnerPlugin
@@ -72,7 +73,7 @@ def run_behave(config, runner_class=None):
         print(TAG_HELP)
         return 0
 
-    if  config.lang == "help" or config.lang_list:
+    if config.lang == "help" or config.lang_list:
         print_language_list()
         return 0
 
@@ -102,6 +103,16 @@ def run_behave(config, runner_class=None):
     if config.runner == "help":
         print_runners(config.runner_aliases)
         return 0
+
+    # -- HANDLE MULTIPROCESSING
+    # Use default parallel runner if custom not provided
+    if config.jobs > 1 and not runner_class:
+        if config.parallel_element == "feature":
+            runner_class = FeatureParallelRunner
+        else:
+            runner_class = ScenarioParallelRunner
+        print("INFO: Number of jobs > 1 - using Parallel Runner: %s" % 
+            runner_class.__name__)
 
     # -- MAIN PART:
     runner = None
@@ -206,7 +217,7 @@ def print_formatters(file=None):
 
     :param file:  Optional, output file to use (default: sys.stdout).
     """
-    from behave.formatter._registry  import format_items
+    from behave.formatter._registry import format_items
     from operator import itemgetter
 
     print_ = lambda text: print(text, file=file)

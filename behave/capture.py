@@ -10,6 +10,7 @@ from six import StringIO, PY2
 from behave.log_capture import LoggingCapture
 from behave.textutil import text as _text
 
+
 def add_text_to(value, more_text, separator="\n"):
     if more_text:
         if value:
@@ -104,6 +105,19 @@ class Captured(object):
             assert captured1.stdout == "Hello\nWorld"
         """
         return self.add(other)
+
+    def send_status(self):
+        ret = {'stdout': self.stdout,
+               'stderr': self.stderr,
+               'log_output': self.log_output,
+               }
+        return ret
+
+    def recv_status(self, value):
+        assert not self, "Captured already has content"
+        for k in 'stdout', 'stderr', 'log_output':
+            if k in value:
+                setattr(self, k, value[k])
 
 
 class CaptureController(object):
