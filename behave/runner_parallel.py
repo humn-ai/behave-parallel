@@ -191,9 +191,9 @@ class MasterParallelRunner(Runner):
 
         def _out_scenario(scenario, formatter):
             formatter.scenario(scenario)
-            for step in scenario.steps:
+            for step in scenario.all_steps:
                 formatter.step(step)
-            for step in scenario.steps:
+            for step in scenario.all_steps:
                 match = the_step_registry.find_match(step)
                 if match:
                     formatter.match(match)
